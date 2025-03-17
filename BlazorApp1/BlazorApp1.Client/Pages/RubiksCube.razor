@@ -1,0 +1,268 @@
+﻿@page "/rubikscube"
+@inject HttpClient HttpClient
+@inject IJSRuntime JSRuntime
+@using BlazorApp1.Client.Extensions
+@using BlazorApp1.Client.Services
+@using Microsoft.AspNetCore.Html
+@rendermode InteractiveAuto
+
+<h3>Rubik's Cube Viewer</h3>
+
+<div class="rotation-buttons">
+	@foreach (var face in new[] { "front", "right", "up", "down", "left", "back" })
+	{
+		foreach (var direction in new[] { "clockwise", "anticlockwise" })
+		{
+			<button onclick="@(() => RotateFace(face, direction))">@($"{face} {direction}")</button>
+		}
+	}
+</div>
+
+
+<div class="rubik-cube-container">
+	@if (cubeState != null)
+	{
+		<div class="cube-container">
+			<div class="cube" style="transform:@cubeRotation">
+				<div class="face front">@((MarkupString)GetFaceHtml("Front"))</div>
+				<div class="face back">@((MarkupString)GetFaceHtml("Back"))</div>
+				<div class="face left">@((MarkupString)GetFaceHtml("Left"))</div>
+				<div class="face right">@((MarkupString)GetFaceHtml("Right"))</div>
+				<div class="face top">@((MarkupString)GetFaceHtml("Up"))</div>
+				<div class="face bottom">@((MarkupString)GetFaceHtml("Down"))</div>
+			</div>
+		</div>
+	}
+	else
+	{
+		<p>Loading Cube...</p>
+	}
+</div>
+<div class="center">
+	<button class="just-rotate-btn" onclick="@(() => JustRotate())">Just Rotate</button>
+</div>
+@code {
+	public Dictionary<string, string[]> cubeState;
+	private string cubeRotation = "rotateX(-35deg) rotateY(-30deg)";
+	static readonly HttpClient client = new HttpClient();
+
+	protected override async Task OnInitializedAsync()
+	{
+		var response = await client.GetFromJsonAsync<Dictionary<string, string[]>>("https://localhost:7187/api/RubiksCube/state");
+		if (response != null)
+		{
+			cubeState = response;
+		}
+	}
+
+	private string GetColorFromState(string color)
+	{
+		return color switch
+		{
+			"G" => "green",
+			"R" => "red",
+			"W" => "white",
+			"B" => "blue",
+			"O" => "orange",
+			"Y" => "yellow",
+			_ => "gray"
+		};
+	}
+
+	private MarkupString GetFaceHtml(string face)
+	{
+		var colors = cubeState[face];
+		string html = "";
+		foreach (var color in colors)
+		{
+			html += $"<div class='tile {GetColorFromState(color)}'></div>";
+		}
+
+		return new MarkupString(html);
+	}
+
+	public async Task RotateFace(string face, string direction)
+	{
+		var response = await client.PostAsync($"https://localhost:7187/api/rubikscube/rotate/{face}?direction={direction}", null);
+
+		if (response.IsSuccessStatusCode)
+		{
+			cubeState = await response.Content.ReadFromJsonAsync<Dictionary<string, string[]>>();
+			// Log the updated cube state to the browser console
+			await LogCubeStateToConsole();
+
+			StateHasChanged();
+		}
+	}
+
+	private void JustRotate()
+	{
+		cubeRotation = $"rotateX({new Random().Next(0, 360)}deg) rotateY({new Random().Next(0, 360)}deg)";
+	}
+
+	private async Task LogCubeStateToConsole()
+	{
+		var upFace = cubeState["Up"];
+		var leftFace = cubeState["Left"];
+		var frontFace = cubeState["Front"];
+		var rightFace = cubeState["Right"];
+		var backFace = cubeState["Back"];
+		var downFace = cubeState["Down"];
+
+		var logMessage = "";
+
+		// Up face
+		logMessage += $"        {string.Join(" ", upFace.Take(3))}\n";
+		logMessage += $"        {string.Join(" ", upFace.Skip(3).Take(3))}\n";
+		logMessage += $"        {string.Join(" ", upFace.Skip(6).Take(3))}\n";
+
+		// Left, Front, Right, Back
+		for (int i = 0; i < 3; i++)
+		{
+			logMessage += $"{string.Join(" ", leftFace.Skip(i * 3).Take(3))}\t";
+			logMessage += $"{string.Join(" ", frontFace.Skip(i * 3).Take(3))}\t";
+			logMessage += $"{string.Join(" ", rightFace.Skip(i * 3).Take(3))}\t";
+			logMessage += $"{string.Join(" ", backFace.Skip(i * 3).Take(3))}\n";
+		}
+		// Down face
+		logMessage += $"        {string.Join(" ", downFace.Take(3))}\n";
+		logMessage += $"        {string.Join(" ", downFace.Skip(3).Take(3))}\n";
+		logMessage += $"        {string.Join(" ", downFace.Skip(6).Take(3))}\n";
+
+		await JSRuntime.InvokeVoidAsync("console.log", logMessage);
+	}
+}
+
+
+<style>
+	.center {
+		margin: auto;
+		width: max-content;
+		padding: 10px;
+	}
+
+	.just-rotate-btn {
+		width: 123px;
+		height: 30px;
+		position: absolute;
+		padding: unset !important;
+	}
+
+	.cube-container {
+		padding-top: 100px;
+		perspective: 600px;
+		margin: 20px;
+		text-align: center;
+		margin-left: 20%;
+	}
+
+	.cube {
+		width: 300px;
+		height: 300px;
+		position: relative;
+		transform-style: preserve-3d;
+		transition: transform 1s;
+	}
+
+	.face {
+		position: absolute;
+		width: 300px;
+		height: 300px;
+		background-color: rgba(255, 255, 255, 0.8);
+		border: 2px solid #000;
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		grid-template-rows: repeat(3, 1fr);
+	}
+
+	.front {
+		transform: translateZ(150px);
+		background: lightgreen;
+	}
+
+	.back {
+		transform: rotateY(180deg) translateZ(150px);
+		background: lightblue;
+	}
+
+	.left {
+		transform: rotateY(-90deg) translateZ(150px);
+		background: orange;
+	}
+
+	.right {
+		transform: rotateY(90deg) translateZ(150px);
+		background: red;
+	}
+
+	.top {
+		transform: rotateX(90deg) translateZ(150px);
+		background: white;
+	}
+
+	.bottom {
+		transform: rotateX(-90deg) translateZ(150px);
+		background: yellow;
+	}
+
+	.tile {
+		border: 1px solid black;
+		width: 100%;
+		height: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		font-size: 1.5em;
+	}
+
+	.green {
+		background-color: green;
+	}
+
+	.red {
+		background-color: red;
+	}
+
+	.white {
+		background-color: white;
+	}
+
+	.blue {
+		background-color: blue;
+	}
+
+	.orange {
+		background-color: orange;
+	}
+
+	.yellow {
+		background-color: yellow;
+	}
+
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		grid-template-rows: repeat(3, 1fr);
+	}
+
+	button {
+		margin: 1px;
+		padding: 8px;
+		font-size: 11px;
+		cursor: pointer;
+		background-color: #4CAF50;
+		color: white;
+		border: none;
+		border-radius: 5px;
+	}
+
+		button:hover {
+			background-color: #45a049;
+		}
+</style>
+
+<script>
+	window.logToConsole = (message) => {
+		console.log(message);
+	};
+</script>
