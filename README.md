@@ -1,5 +1,3 @@
-# RubiksCubeRazor
-
 # RubiksCubeBlazor
 
 RubiksCubeBlazor is a Blazor WebAssembly application that simulates a Rubik's Cube. The project aims to provide an interactive and educational tool for users to explore and manipulate a digital Rubik's Cube. It utilizes Blazor for the user interface and leverages C# for the logic behind the cube's functionality, such as face rotations and cube state management.
