@@ -6,6 +6,7 @@ RubiksCubeBlazor is a Blazor WebAssembly application that simulates a Rubik's Cu
 
 - **Interactive Rubik's Cube:** Users can interact with a digital representation of the Rubik's Cube and rotate the cube faces.
 - **Cube State Display:** The app provides a live representation of the cube state, showing each face's color.
+- **Cube State Display in Console:** The app provides a live representation of the cube state, showing each face's color in browser console.
 - **Rotation Controls:** Rotate the cube faces clockwise or anti-clockwise, simulating real Rubik's Cube moves.
 - **Blazor WebAssembly:** Built with Blazor WebAssembly, making it a cross-platform web application with modern web technologies.
 
